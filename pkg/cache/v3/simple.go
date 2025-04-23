@@ -231,8 +231,12 @@ func (cache *snapshotCache) SetSnapshot(ctx context.Context, node string, snapsh
 	)
 	defer span.End()
 
+	_, acquireLockSpan := tracer.Start(ctx, "acquireCacheLock",
+		trace.WithAttributes(attribute.String("node-id", node)),
+	)
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+	acquireLockSpan.End()
 
 	// update the existing entry
 	cache.snapshots[node] = snapshot
