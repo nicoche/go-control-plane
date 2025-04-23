@@ -19,6 +19,7 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/server/stream/v3"
+	"go.opentelemetry.io/otel"
 )
 
 // groups together resource-related arguments for the createDeltaResponse function
@@ -29,6 +30,10 @@ type resourceContainer struct {
 }
 
 func createDeltaResponse(ctx context.Context, req *DeltaRequest, state stream.StreamState, resources resourceContainer) *RawDeltaResponse {
+	tracer := otel.GetTracerProvider().Tracer("go-control-plane")
+	ctx, span := tracer.Start(ctx, "createDeltaResponse")
+	defer span.End()
+
 	// variables to build our response with
 	var nextVersionMap map[string]string
 	var filtered []types.Resource

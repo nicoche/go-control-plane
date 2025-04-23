@@ -24,6 +24,9 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/log"
 	"github.com/envoyproxy/go-control-plane/pkg/server/stream/v3"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ResourceSnapshot is an abstract snapshot of a collection of resources that
@@ -222,6 +225,12 @@ func (cache *snapshotCache) sendHeartbeats(ctx context.Context, node string) {
 
 // SetSnapshotCache updates a snapshot for a node.
 func (cache *snapshotCache) SetSnapshot(ctx context.Context, node string, snapshot ResourceSnapshot) error {
+	tracer := otel.GetTracerProvider().Tracer("go-control-plane")
+	ctx, span := tracer.Start(ctx, "SetSnapshot",
+		trace.WithAttributes(attribute.String("node-id", node)),
+	)
+	defer span.End()
+
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
@@ -286,6 +295,10 @@ func (cache *snapshotCache) respondSOTWWatches(ctx context.Context, info *status
 }
 
 func (cache *snapshotCache) respondDeltaWatches(ctx context.Context, info *statusInfo, snapshot ResourceSnapshot) error {
+	tracer := otel.GetTracerProvider().Tracer("go-control-plane")
+	ctx, span := tracer.Start(ctx, "respondDeltaWatches")
+	defer span.End()
+
 	// We only calculate version hashes when using delta. We don't
 	// want to do this when using SOTW so we can avoid unnecessary
 	// computational cost if not using delta.
@@ -580,6 +593,10 @@ func (cache *snapshotCache) CreateDeltaWatch(request *DeltaRequest, state stream
 
 // Respond to a delta watch with the provided snapshot value. If the response is nil, there has been no state change.
 func (cache *snapshotCache) respondDelta(ctx context.Context, snapshot ResourceSnapshot, request *DeltaRequest, value chan DeltaResponse, state stream.StreamState) (*RawDeltaResponse, error) {
+	tracer := otel.GetTracerProvider().Tracer("go-control-plane")
+	ctx, span := tracer.Start(ctx, "respondDelta")
+	defer span.End()
+
 	resp := createDeltaResponse(ctx, request, state, resourceContainer{
 		resourceMap:   snapshot.GetResources(request.GetTypeUrl()),
 		versionMap:    snapshot.GetVersionMap(request.GetTypeUrl()),
