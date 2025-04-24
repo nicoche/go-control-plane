@@ -310,10 +310,14 @@ func (cache *snapshotCache) respondDeltaWatches(ctx context.Context, info *statu
 		return nil
 	}
 
+	_, constructVersionMapSpan := tracer.Start(ctx, "snapshot.ConstructVersionMap")
 	err := snapshot.ConstructVersionMap()
 	if err != nil {
+		constructVersionMapSpan.RecordError(err)
+		constructVersionMapSpan.End()
 		return err
 	}
+	constructVersionMapSpan.End()
 
 	// If ADS is enabled we need to order response delta watches so we guarantee
 	// sending them in the correct order. Go's default implementation
